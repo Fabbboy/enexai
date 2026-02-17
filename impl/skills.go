@@ -29,7 +29,14 @@ type Skill struct {
 }
 
 func (s *Skill) FormatContext() string {
-	return "Category: " + s.Category + "\nCompetence: " + s.Competence + "\nNote: " + s.Note
+	var b strings.Builder
+	b.WriteString("Category: ")
+	b.WriteString(s.Category)
+	b.WriteString("\nCompetence: ")
+	b.WriteString(s.Competence)
+	b.WriteString("\nNote: ")
+	b.WriteString(s.Note)
+	return b.String()
 }
 
 func (s *Skill) evidenceText() string {
@@ -90,7 +97,11 @@ var fitsResultSchema = map[string]any{
 }
 
 func FitsSkill(client aiClient, skill *Skill, text string) (*FitsResult, error) {
-	instructions := fitsSkillPrompt + "\n\n" + skill.FormatContext()
+	var b strings.Builder
+	b.WriteString(fitsSkillPrompt)
+	b.WriteString("\n\n")
+	b.WriteString(skill.FormatContext())
+	instructions := b.String()
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -108,21 +119,27 @@ func FitsSkill(client aiClient, skill *Skill, text string) (*FitsResult, error) 
 		return nil, err
 	}
 
+	client.logger.Debug("FitsSkill", "competence", skill.Competence, "fitness", result.Fitness, "reason", result.Reason)
 	return &result, nil
 }
 
-func FindFittingSkills(client aiClient, skills []Skill, text string) ([]int, error) {
-	var indices []int
+type SkillMatch struct {
+	Index   int
+	Fitness Fitness
+}
+
+func FindFittingSkills(client aiClient, skills []Skill, text string) ([]SkillMatch, error) {
+	var matches []SkillMatch
 	for i := range skills {
 		result, err := FitsSkill(client, &skills[i], text)
 		if err != nil {
 			return nil, err
 		}
-		if result.Fitness == Fit {
-			indices = append(indices, i)
+		if result.Fitness == Fit || result.Fitness == WeakFit {
+			matches = append(matches, SkillMatch{Index: i, Fitness: result.Fitness})
 		}
 	}
-	return indices, nil
+	return matches, nil
 }
 
 type StyleResult struct {
@@ -149,7 +166,11 @@ var styleResultSchema = map[string]any{
 }
 
 func AnalyzeStyle(client aiClient, skill *Skill) (*StyleResult, error) {
-	instructions := styleAnalysisPrompt + "\n\n" + skill.FormatContext()
+	var b strings.Builder
+	b.WriteString(styleAnalysisPrompt)
+	b.WriteString("\n\n")
+	b.WriteString(skill.FormatContext())
+	instructions := b.String()
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -200,7 +221,11 @@ var evidenceResultSchema = map[string]any{
 }
 
 func AnalyzeEvidence(client aiClient, skill *Skill) (*EvidenceResult, error) {
-	instructions := evidenceAnalysisPrompt + "\n\n" + skill.FormatContext()
+	var b strings.Builder
+	b.WriteString(evidenceAnalysisPrompt)
+	b.WriteString("\n\n")
+	b.WriteString(skill.FormatContext())
+	instructions := b.String()
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -256,7 +281,11 @@ var coverageResultSchema = map[string]any{
 }
 
 func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
-	instructions := coverageDetectionPrompt + "\n\n" + skill.FormatContext()
+	var b strings.Builder
+	b.WriteString(coverageDetectionPrompt)
+	b.WriteString("\n\n")
+	b.WriteString(skill.FormatContext())
+	instructions := b.String()
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),

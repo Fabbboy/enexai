@@ -1,7 +1,9 @@
 package impl
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -28,10 +30,14 @@ func loadData(logger *slog.Logger, configPath, skillsPath string) (*Config, []Sk
 	return config, skills, nil
 }
 
-func Run(configPath, skillsPath string) error {
+func Run(configPath, skillsPath string, debug bool) error {
 	ctx := context.Background()
+	level := slog.LevelInfo
+	if debug {
+		level = slog.LevelDebug
+	}
 	handler := tint.NewHandler(os.Stdout, &tint.Options{
-		Level: slog.LevelDebug,
+		Level: level,
 	})
 	logger := slog.New(handler)
 
@@ -46,34 +52,35 @@ func Run(configPath, skillsPath string) error {
 	)
 	logger.Info("OpenAI client initialized with URL", "url", config.AiConfig.Url)
 
-	writerClient := aiClient{
-		ctx:    ctx,
-		client: &client,
-		model:  openai.ResponsesModel(config.ModelsConfig.Writer),
-		logger: logger,
-	}
-
 	classifierClient := aiClient{
 		ctx:    ctx,
 		client: &client,
 		model:  openai.ResponsesModel(config.ModelsConfig.Classifier),
 		logger: logger,
 	}
-	_ = writerClient
 
-	skill := &skills[2]
+	scanner := bufio.NewScanner(os.Stdin)
 
-	coverageResp, err := DetectCoverage(classifierClient, skill)
+	fmt.Print("Feedback title: ")
+	scanner.Scan()
+	title := scanner.Text()
+
+	fmt.Print("Evidence: ")
+	scanner.Scan()
+	evidence := scanner.Text()
+
+	text := title + "\n" + evidence
+	logger.Info("Finding fitting skills", "title", title)
+
+	matches, err := FindFittingSkills(classifierClient, skills, text)
 	if err != nil {
 		return err
 	}
-	logger.Info("DetectCoverage response", "response", coverageResp)
 
-	fitsResp, err := FitsSkill(classifierClient, skill, "I have experience with Go and Python.")
-	if err != nil {
-		return err
+	fmt.Printf("\n%d skill(s) matched:\n", len(matches))
+	for _, m := range matches {
+		fmt.Printf("  - [%s] %s\n", m.Fitness, skills[m.Index].Competence)
 	}
-	logger.Info("FitsSkill response", "response", fitsResp)
 
 	return nil
 }
