@@ -8,7 +8,6 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
-	"github.com/openai/openai-go/v3/responses"
 )
 
 func loadData(logger *slog.Logger, configPath, skillsPath string) (*Config, []Skill, error) {
@@ -48,24 +47,24 @@ func Run(configPath, skillsPath string) error {
 	)
 	logger.Info("OpenAI client initialized with URL", "url", config.AiConfig.Url)
 
-	question := "What are the top 5 skills for a software engineer?"
-	input := responses.ResponseNewParamsInputUnion{
-		OfString: openai.String(question),
-	}
-
-	respData := ResponseData{
+	rdb := ResponseDataBase{
 		ctx:    ctx,
 		client: &client,
 		model:  openai.ResponsesModel(config.AiConfig.Model),
 		logger: logger,
-		input:  input,
 	}
 
-	msg, err := Response(respData)
+	skill := &skills[0]
+	describeData := DescribeSkillData{
+		ResponseDataBase: rdb,
+		skill:            skill,
+	}
+
+	resp, err := DescribeSkill(describeData)
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Response received", "message", msg)
+	logger.Info("DescribeSkill response", "response", resp)
 	return nil
 }

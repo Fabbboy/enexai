@@ -6,21 +6,28 @@ import (
 	"time"
 
 	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
 )
 
-type ResponseData struct {
+type ResponseDataBase struct {
 	ctx    context.Context
 	client *openai.Client
 	model  openai.ResponsesModel
 	logger *slog.Logger
+}
+
+type ResponseData struct {
+	ResponseDataBase
+	system param.Opt[string]
 	input  responses.ResponseNewParamsInputUnion
 }
 
 func Response(data ResponseData) (string, error) {
 	params := responses.ResponseNewParams{
-		Model: data.model,
-		Input: data.input,
+		Model:        data.model,
+		Input:        data.input,
+		Instructions: data.system,
 	}
 
 	start := time.Now()
