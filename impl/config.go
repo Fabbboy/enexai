@@ -7,12 +7,17 @@ import (
 type AiConfig struct {
 	Url         string  `ini:"api_url"`
 	Key         string  `ini:"api_key"`
-	Model       string  `ini:"model"`
 	Temperature float64 `ini:"temperature"`
 }
 
+type ModelConfig struct {
+	Classifier string `ini:"classifier"`
+	Writer     string `ini:"writer"`
+}
+
 type Config struct {
-	AiConfig AiConfig `ini:"ai"`
+	AiConfig     AiConfig    `ini:"ai"`
+	ModelsConfig ModelConfig `ini:"models"`
 }
 
 func LoadConfig(file string) (*Config, error) {

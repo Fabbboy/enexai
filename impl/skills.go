@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 
@@ -81,6 +82,19 @@ One line per competency.
 
 END
 `
+
+	fitsSkillSystem string = `
+Classify whether the text provides evidence for the competency.
+
+fit = concrete action matches competency
+weak_fit = related topic but no concrete action
+no_fit = unrelated
+
+Reason: max 6 words, keywords only.
+If unsure choose weak_fit.
+Do not rewrite the text.
+Return JSON only.
+`
 )
 
 type Skill struct {
@@ -115,11 +129,12 @@ func DescribeSkill(data DescribeSkillData) (string, error) {
 	sb.WriteString("Category: " + data.skill.Category + "\n")
 	sb.WriteString("Competence: " + data.skill.Competence + "\n")
 	sb.WriteString("Note: " + data.skill.Note + "\n")
-
 	prompt := sb.String()
+
 	input := responses.ResponseNewParamsInputUnion{
 		OfString: openai.String(prompt),
 	}
+
 	respData := ResponseData{
 		ResponseDataBase: data.ResponseDataBase,
 		system:           openai.String(describeSkillSystem),
@@ -132,4 +147,86 @@ func DescribeSkill(data DescribeSkillData) (string, error) {
 	}
 
 	return resp, nil
+}
+
+type FitsSkillData struct {
+	ResponseDataBase
+	skill *Skill
+	text  string
+}
+
+type Fitness string
+
+const (
+	Fit     Fitness = "fit"
+	WeakFit Fitness = "weak_fit"
+	NoFit   Fitness = "no_fit"
+)
+
+type FitsResult struct {
+	Fitness Fitness `json:"fit"`
+	Reason  string  `json:"reason"`
+}
+
+var (
+	FitsResultSchema = map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"fit": map[string]any{
+				"type": "string",
+				"enum": []string{string(Fit), string(WeakFit), string(NoFit)},
+			},
+			"reason": map[string]any{
+				"type": "string",
+			},
+		},
+		"required":             []string{"fit", "reason"},
+		"additionalProperties": false,
+	}
+
+	FitsResultSchemaConfig = responses.ResponseFormatTextJSONSchemaConfigParam{
+		Schema: FitsResultSchema,
+		Strict: openai.Bool(true),
+	}
+)
+
+func FitsSkill(data *FitsSkillData) (*FitsResult, error) {
+	var sb strings.Builder
+	sb.WriteString("Category: " + data.skill.Category + "\n")
+	sb.WriteString("Competence: " + data.skill.Competence + "\n")
+	sb.WriteString("Note: " + data.skill.Note + "\n")
+	sb.WriteString("Text: " + data.text + "\n")
+	prompt := sb.String()
+
+	input := responses.ResponseNewParamsInputUnion{
+		OfString: openai.String(prompt),
+	}
+
+	textFormat := responses.ResponseFormatTextConfigUnionParam{
+		OfJSONSchema: &FitsResultSchemaConfig,
+	}
+
+	text := responses.ResponseTextConfigParam{
+		Format: textFormat,
+	}
+
+	respData := ResponseData{
+		ResponseDataBase: data.ResponseDataBase,
+		system:           openai.String(fitsSkillSystem),
+		input:            input,
+		text:             text,
+	}
+
+	resp, err := Response(respData)
+	if err != nil {
+		return nil, err
+	}
+
+	var result FitsResult
+	err = json.Unmarshal([]byte(resp), &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }

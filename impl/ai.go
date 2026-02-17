@@ -21,6 +21,7 @@ type ResponseData struct {
 	ResponseDataBase
 	system param.Opt[string]
 	input  responses.ResponseNewParamsInputUnion
+	text   responses.ResponseTextConfigParam
 }
 
 func Response(data ResponseData) (string, error) {
@@ -28,6 +29,7 @@ func Response(data ResponseData) (string, error) {
 		Model:        data.model,
 		Input:        data.input,
 		Instructions: data.system,
+		Text:         data.text,
 	}
 
 	start := time.Now()

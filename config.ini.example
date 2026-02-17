@@ -1,5 +1,8 @@
 [ai]
 api_url = 
 api_key = 
-model = llama3.2
 temperature = 0.7
+
+[models]
+classifier = llama3.2
+writer = qwen3:8b
