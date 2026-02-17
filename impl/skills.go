@@ -1,7 +1,7 @@
 package impl
 
 import (
-	"encoding/json"
+	_ "embed"
 	"os"
 	"strings"
 
@@ -10,97 +10,39 @@ import (
 	"github.com/openai/openai-go/v3/responses"
 )
 
-const (
-	describeSkillSystem string = `
-SYSTEM PROMPT: PREFLIGHT COMPETENCY ANALYZER
+//go:embed prompts/fits_skill.txt
+var fitsSkillPrompt string
 
-You analyze a competency document and optional evidence text.
-You do not write final competency evidence.
-You only extract structure and guidance.
+//go:embed prompts/style_analysis.txt
+var styleAnalysisPrompt string
 
-INPUT
-One text block containing:
+//go:embed prompts/evidence_analysis.txt
+var evidenceAnalysisPrompt string
 
-* competency definitions with IDs like A1.1 and optional K-levels like (K3)
-* optional user evidence text
-* evidence may reference competencies like (A1.1, A1.3)
-
-TASKS
-
-1. Extract competencies
-   For each competency output:
-   ID | K-level | short description
-   If K-level is missing write K?.
-
-2. Detect coverage from the evidence text
-   covered = concrete action described
-   partial = mentioned without concrete action
-   none = not mentioned
-   Always output one line per competency with a short factual reason.
-
-3. Extract writing style from the evidence text
-   Always output values. If unknown write unknown.
-   Language
-   Perspective (first person singular, plural, impersonal)
-   Tense (past, present, mixed)
-   Tone (formal, semi-formal, narrative, bullet-like)
-   Sentence length (short, medium, long, mixed)
-   References (yes/no)
-
-4. List gaps
-   For competencies with partial or none output:
-   ID | very short description of missing evidence type
-
-OUTPUT FORMAT (MARKDOWN)
-
-## COMPETENCIES
-
-A1.1 | K3 | description
-
-## COVERAGE
-
-A1.1 | covered | reason
-
-## STYLE
-
-Language: value
-Perspective: value
-Tense: value
-Tone: value
-Sentence length: value
-References: yes/no
-
-## GAPS
-
-A1.4 | missing evidence type
-
-CONSTRAINTS
-Do not write final competency text.
-Do not invent actions.
-Be extractive and concise.
-One line per competency.
-
-END
-`
-
-	fitsSkillSystem string = `
-Classify whether the text provides evidence for the competency.
-
-fit = concrete action matches competency
-weak_fit = related topic but no concrete action
-no_fit = unrelated
-
-Reason: max 6 words, keywords only.
-If unsure choose weak_fit.
-Do not rewrite the text.
-Return JSON only.
-`
-)
+//go:embed prompts/coverage_detection.txt
+var coverageDetectionPrompt string
 
 type Skill struct {
 	Category   string `csv:"Kompetenzkategorie"`
 	Competence string `csv:"Kompetenz"`
 	Note       string `csv:"Bemerkung"`
+}
+
+func (s *Skill) FormatContext() string {
+	return "Category: " + s.Category + "\nCompetence: " + s.Competence + "\nNote: " + s.Note
+}
+
+func (s *Skill) evidenceText() string {
+	i := strings.Index(s.Note, "==========")
+	if i < 0 {
+		return ""
+	}
+	// Skip past the full run of '=' characters.
+	j := i
+	for j < len(s.Note) && s.Note[j] == '=' {
+		j++
+	}
+	return strings.TrimSpace(s.Note[j:])
 }
 
 func LoadSkills(file string) ([]Skill, error) {
@@ -119,42 +61,6 @@ func LoadSkills(file string) ([]Skill, error) {
 	return skills, nil
 }
 
-type DescribeSkillData struct {
-	ResponseDataBase
-	skill *Skill
-}
-
-func DescribeSkill(data DescribeSkillData) (string, error) {
-	var sb strings.Builder
-	sb.WriteString("Category: " + data.skill.Category + "\n")
-	sb.WriteString("Competence: " + data.skill.Competence + "\n")
-	sb.WriteString("Note: " + data.skill.Note + "\n")
-	prompt := sb.String()
-
-	input := responses.ResponseNewParamsInputUnion{
-		OfString: openai.String(prompt),
-	}
-
-	respData := ResponseData{
-		ResponseDataBase: data.ResponseDataBase,
-		system:           openai.String(describeSkillSystem),
-		input:            input,
-	}
-
-	resp, err := Response(respData)
-	if err != nil {
-		return "", err
-	}
-
-	return resp, nil
-}
-
-type FitsSkillData struct {
-	ResponseDataBase
-	skill *Skill
-	text  string
-}
-
 type Fitness string
 
 const (
@@ -168,62 +74,202 @@ type FitsResult struct {
 	Reason  string  `json:"reason"`
 }
 
-var (
-	FitsResultSchema = map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"fit": map[string]any{
-				"type": "string",
-				"enum": []string{string(Fit), string(WeakFit), string(NoFit)},
-			},
-			"reason": map[string]any{
-				"type": "string",
-			},
+var fitsResultSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"fit": map[string]any{
+			"type": "string",
+			"enum": []string{string(Fit), string(WeakFit), string(NoFit)},
 		},
-		"required":             []string{"fit", "reason"},
-		"additionalProperties": false,
+		"reason": map[string]any{
+			"type": "string",
+		},
+	},
+	"required":             []string{"fit", "reason"},
+	"additionalProperties": false,
+}
+
+func FitsSkill(client aiClient, skill *Skill, text string) (*FitsResult, error) {
+	instructions := fitsSkillPrompt + "\n\n" + skill.FormatContext()
+
+	params := responses.ResponseNewParams{
+		Instructions: openai.String(instructions),
+		Input:        inputItems(userMsg(text)),
+		Text:         jsonSchemaFormat("fits_result", fitsResultSchema),
 	}
 
-	FitsResultSchemaConfig = responses.ResponseFormatTextJSONSchemaConfigParam{
-		Schema: FitsResultSchema,
-		Strict: openai.Bool(true),
-	}
-)
-
-func FitsSkill(data *FitsSkillData) (*FitsResult, error) {
-	var sb strings.Builder
-	sb.WriteString("Category: " + data.skill.Category + "\n")
-	sb.WriteString("Competence: " + data.skill.Competence + "\n")
-	sb.WriteString("Note: " + data.skill.Note + "\n")
-	sb.WriteString("Text: " + data.text + "\n")
-	prompt := sb.String()
-
-	input := responses.ResponseNewParamsInputUnion{
-		OfString: openai.String(prompt),
-	}
-
-	textFormat := responses.ResponseFormatTextConfigUnionParam{
-		OfJSONSchema: &FitsResultSchemaConfig,
-	}
-
-	text := responses.ResponseTextConfigParam{
-		Format: textFormat,
-	}
-
-	respData := ResponseData{
-		ResponseDataBase: data.ResponseDataBase,
-		system:           openai.String(fitsSkillSystem),
-		input:            input,
-		text:             text,
-	}
-
-	resp, err := Response(respData)
+	resp, err := client.Send(params)
 	if err != nil {
 		return nil, err
 	}
 
-	var result FitsResult
-	err = json.Unmarshal([]byte(resp), &result)
+	result, err := parse[FitsResult](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func FindFittingSkills(client aiClient, skills []Skill, text string) ([]int, error) {
+	var indices []int
+	for i := range skills {
+		result, err := FitsSkill(client, &skills[i], text)
+		if err != nil {
+			return nil, err
+		}
+		if result.Fitness == Fit {
+			indices = append(indices, i)
+		}
+	}
+	return indices, nil
+}
+
+type StyleResult struct {
+	Language       string `json:"language"`
+	Perspective    string `json:"perspective"`
+	Tense          string `json:"tense"`
+	Tone           string `json:"tone"`
+	SentenceLength string `json:"sentence_length"`
+	UsesReferences bool   `json:"uses_references"`
+}
+
+var styleResultSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"language":        map[string]any{"type": "string"},
+		"perspective":     map[string]any{"type": "string"},
+		"tense":           map[string]any{"type": "string"},
+		"tone":            map[string]any{"type": "string"},
+		"sentence_length": map[string]any{"type": "string"},
+		"uses_references": map[string]any{"type": "boolean"},
+	},
+	"required":             []string{"language", "perspective", "tense", "tone", "sentence_length", "uses_references"},
+	"additionalProperties": false,
+}
+
+func AnalyzeStyle(client aiClient, skill *Skill) (*StyleResult, error) {
+	instructions := styleAnalysisPrompt + "\n\n" + skill.FormatContext()
+
+	params := responses.ResponseNewParams{
+		Instructions: openai.String(instructions),
+		Input:        inputItems(userMsg(skill.evidenceText())),
+		Text:         jsonSchemaFormat("style_result", styleResultSchema),
+	}
+
+	resp, err := client.Send(params)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := parse[StyleResult](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+type EvidenceSummary struct {
+	CompetencyID string `json:"competency_id"`
+	Summary      string `json:"summary"`
+}
+
+type EvidenceResult struct {
+	Competencies []EvidenceSummary `json:"competencies"`
+}
+
+var evidenceResultSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"competencies": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"competency_id": map[string]any{"type": "string"},
+					"summary":       map[string]any{"type": "string"},
+				},
+				"required":             []string{"competency_id", "summary"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"competencies"},
+	"additionalProperties": false,
+}
+
+func AnalyzeEvidence(client aiClient, skill *Skill) (*EvidenceResult, error) {
+	instructions := evidenceAnalysisPrompt + "\n\n" + skill.FormatContext()
+
+	params := responses.ResponseNewParams{
+		Instructions: openai.String(instructions),
+		Input:        inputItems(userMsg(skill.evidenceText())),
+		Text:         jsonSchemaFormat("evidence_result", evidenceResultSchema),
+	}
+
+	resp, err := client.Send(params)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := parse[EvidenceResult](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+type CoverageItem struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	Reason string `json:"reason"`
+}
+
+type CoverageResult struct {
+	Coverage []CoverageItem `json:"coverage"`
+}
+
+var coverageResultSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"coverage": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id": map[string]any{"type": "string"},
+					"status": map[string]any{
+						"type": "string",
+						"enum": []string{"covered", "partial", "none"},
+					},
+					"reason": map[string]any{"type": "string"},
+				},
+				"required":             []string{"id", "status", "reason"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"coverage"},
+	"additionalProperties": false,
+}
+
+func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
+	instructions := coverageDetectionPrompt + "\n\n" + skill.FormatContext()
+
+	params := responses.ResponseNewParams{
+		Instructions: openai.String(instructions),
+		Input:        inputItems(userMsg(skill.evidenceText())),
+		Text:         jsonSchemaFormat("coverage_result", coverageResultSchema),
+	}
+
+	resp, err := client.Send(params)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := parse[CoverageResult](resp)
 	if err != nil {
 		return nil, err
 	}

@@ -39,7 +39,6 @@ func Run(configPath, skillsPath string) error {
 	if err != nil {
 		return err
 	}
-	_ = skills
 
 	client := openai.NewClient(
 		option.WithBaseURL(config.AiConfig.Url),
@@ -47,44 +46,34 @@ func Run(configPath, skillsPath string) error {
 	)
 	logger.Info("OpenAI client initialized with URL", "url", config.AiConfig.Url)
 
-	rdb_writer := ResponseDataBase{
+	writerClient := aiClient{
 		ctx:    ctx,
 		client: &client,
 		model:  openai.ResponsesModel(config.ModelsConfig.Writer),
 		logger: logger,
 	}
 
-	rdb_classifier := ResponseDataBase{
+	classifierClient := aiClient{
 		ctx:    ctx,
 		client: &client,
 		model:  openai.ResponsesModel(config.ModelsConfig.Classifier),
 		logger: logger,
 	}
+	_ = writerClient
 
 	skill := &skills[2]
-	describeData := DescribeSkillData{
-		ResponseDataBase: rdb_writer,
-		skill:            skill,
-	}
 
-	resp, err := DescribeSkill(describeData)
+	coverageResp, err := DetectCoverage(classifierClient, skill)
 	if err != nil {
 		return err
 	}
+	logger.Info("DetectCoverage response", "response", coverageResp)
 
-	logger.Info("DescribeSkill response", "response", resp)
-
-	fitsData := FitsSkillData{
-		ResponseDataBase: rdb_classifier,
-		skill:            skill,
-		text:             "I have experience with Go and Python.",
-	}
-
-	fitsResp, err := FitsSkill(&fitsData)
+	fitsResp, err := FitsSkill(classifierClient, skill, "I have experience with Go and Python.")
 	if err != nil {
 		return err
 	}
-
 	logger.Info("FitsSkill response", "response", fitsResp)
+
 	return nil
 }
