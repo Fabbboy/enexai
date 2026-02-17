@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/fabrice/enexai/impl"
 	"github.com/spf13/cobra"
-	"swisscom.com/fabrice/enexai/impl"
 )
 
 var configPath string
@@ -12,13 +12,16 @@ const (
 	configLabel   string = "config"
 	configDefault string = "config.ini"
 	csvLabel      string = "csv"
-	csvDefault    string = "skills.xlsx"
+	csvDefault    string = "skills.csv"
 )
 
 var rootCmd = &cobra.Command{
 	Use: "app",
 	Run: func(cmd *cobra.Command, args []string) {
-		impl.Run(configPath, csvPath)
+		err := impl.Run(configPath, csvPath)
+		if err != nil {
+			panic(err)
+		}
 	},
 }
 

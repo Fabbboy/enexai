@@ -1,8 +1,9 @@
-module swisscom.com/fabrice/enexai
+module github.com/fabrice/enexai
 
 go 1.24.3
 
 require (
+	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1
 	github.com/lmittmann/tint v1.1.3
 	github.com/openai/openai-go/v3 v3.22.0
 	github.com/spf13/cobra v1.10.2

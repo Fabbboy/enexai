@@ -5,14 +5,14 @@ import (
 )
 
 type AiConfig struct {
-	url         string  `ini:"api_url"`
-	key         string  `ini:"api_key"`
-	model       string  `ini:"model"`
-	temperature float64 `ini:"temperature"`
+	Url         string  `ini:"api_url"`
+	Key         string  `ini:"api_key"`
+	Model       string  `ini:"model"`
+	Temperature float64 `ini:"temperature"`
 }
 
 type Config struct {
-	aiConfig AiConfig `ini:"ai"`
+	AiConfig AiConfig `ini:"ai"`
 }
 
 func LoadConfig(file string) (*Config, error) {
