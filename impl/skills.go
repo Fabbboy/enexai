@@ -40,16 +40,23 @@ func (s *Skill) FormatContext() string {
 }
 
 func (s *Skill) evidenceText() string {
-	i := strings.Index(s.Note, "==========")
-	if i < 0 {
-		return ""
+	text := strings.TrimSpace(s.Note)
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	lines := strings.Split(text, "\n")
+
+	var b strings.Builder
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			if b.Len() > 0 {
+				b.WriteString(" ")
+			}
+			b.WriteString(line)
+		}
 	}
-	// Skip past the full run of '=' characters.
-	j := i
-	for j < len(s.Note) && s.Note[j] == '=' {
-		j++
-	}
-	return strings.TrimSpace(s.Note[j:])
+
+	return b.String()
 }
 
 func LoadSkills(file string) ([]Skill, error) {
