@@ -18,3 +18,8 @@ CONSTRAINTS
 - Keep justifications brief (under 10 words each) — state the action, not the full text.
 - If evidence is empty, mark all as "none" with reason "No evidence text provided."
 - Return JSON only.
+
+CONTEXT
+Category: {{.Category}}
+Competence: {{.Competence}}
+Note: {{.Note}}

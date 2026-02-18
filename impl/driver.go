@@ -122,6 +122,12 @@ func Run(configPath, skillsPath string, debug bool) error {
 			return err
 		}
 
+		logger.Info("Analyzing evidence", "competence", skill.Competence)
+		summary, err := AnalyzeEvidence(classifierClient, skill)
+		if err != nil {
+			return err
+		}
+
 		logger.Info("Detecting coverage", "competence", skill.Competence)
 		coverage, err := DetectCoverage(classifierClient, skill)
 		if err != nil {
@@ -129,7 +135,7 @@ func Run(configPath, skillsPath string, debug bool) error {
 		}
 
 		logger.Info("Writing evidence", "competence", skill.Competence)
-		evidence, err := WriteEvidence(writerClient, skill, title, text, style, coverage)
+		evidence, err := WriteEvidence(writerClient, skill, title, text, style, coverage, summary)
 		if err != nil {
 			return err
 		}

@@ -14,3 +14,8 @@ CONSTRAINTS
 - Only include competency IDs that are actually referenced or addressed in the evidence.
 - Do not invent content; summarize only what is explicitly stated.
 - Return JSON only.
+
+CONTEXT
+Category: {{.Category}}
+Competence: {{.Competence}}
+Note: {{.Note}}

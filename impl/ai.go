@@ -1,9 +1,11 @@
 package impl
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log/slog"
+	"text/template"
 	"time"
 
 	"github.com/openai/openai-go/v3"
@@ -63,4 +65,17 @@ func parse[T any](raw string) (T, error) {
 	}
 
 	return result, nil
+}
+
+func renderTemplate(tmpl string, data any) (string, error) {
+	t, err := template.New("").Parse(tmpl)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	err = t.Execute(&buf, data)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }

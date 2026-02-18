@@ -9,7 +9,6 @@ Classify whether the user text provides evidence for the competency.
 OUTPUT
 JSON with two fields:
 - fit: one of "fit", "weak_fit", "no_fit"
-
 - reason: max 10 words
 
 CLASSIFICATION RULES
@@ -21,3 +20,8 @@ CONSTRAINTS
 - Never reference actions not stated in the text.
 - If unsure, choose weak_fit.
 - Return JSON only.
+
+CONTEXT
+Category: {{.Category}}
+Competence: {{.Competence}}
+Note: {{.Note}}

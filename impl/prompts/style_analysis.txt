@@ -17,3 +17,8 @@ CONSTRAINTS
 - Analyze only the provided text; do not infer beyond it.
 - If a characteristic is ambiguous, choose the dominant pattern.
 - Return JSON only.
+
+CONTEXT
+Category: {{.Category}}
+Competence: {{.Competence}}
+Note: {{.Note}}

@@ -107,11 +107,10 @@ var fitsResultSchema = map[string]any{
 }
 
 func FitsSkill(client aiClient, skill *Skill, text string) (*FitsResult, error) {
-	var b strings.Builder
-	b.WriteString(fitsSkillPrompt)
-	b.WriteString("\n\n")
-	b.WriteString(skill.FormatContext())
-	instructions := b.String()
+	instructions, err := renderTemplate(fitsSkillPrompt, skill)
+	if err != nil {
+		return nil, err
+	}
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -176,11 +175,10 @@ var styleResultSchema = map[string]any{
 }
 
 func AnalyzeStyle(client aiClient, skill *Skill) (*StyleResult, error) {
-	var b strings.Builder
-	b.WriteString(styleAnalysisPrompt)
-	b.WriteString("\n\n")
-	b.WriteString(skill.FormatContext())
-	instructions := b.String()
+	instructions, err := renderTemplate(styleAnalysisPrompt, skill)
+	if err != nil {
+		return nil, err
+	}
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -231,11 +229,10 @@ var evidenceResultSchema = map[string]any{
 }
 
 func AnalyzeEvidence(client aiClient, skill *Skill) (*EvidenceResult, error) {
-	var b strings.Builder
-	b.WriteString(evidenceAnalysisPrompt)
-	b.WriteString("\n\n")
-	b.WriteString(skill.FormatContext())
-	instructions := b.String()
+	instructions, err := renderTemplate(evidenceAnalysisPrompt, skill)
+	if err != nil {
+		return nil, err
+	}
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -291,11 +288,10 @@ var coverageResultSchema = map[string]any{
 }
 
 func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
-	var b strings.Builder
-	b.WriteString(coverageDetectionPrompt)
-	b.WriteString("\n\n")
-	b.WriteString(skill.FormatContext())
-	instructions := b.String()
+	instructions, err := renderTemplate(coverageDetectionPrompt, skill)
+	if err != nil {
+		return nil, err
+	}
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
@@ -329,45 +325,33 @@ var writeResultSchema = map[string]any{
 	"additionalProperties": false,
 }
 
-func WriteEvidence(client aiClient, skill *Skill, title, experience string, style *StyleResult, coverage *CoverageResult) (string, error) {
-	var instructions strings.Builder
-	instructions.WriteString(writeEvidencePrompt)
-	instructions.WriteString("\n\n")
-	instructions.WriteString(skill.FormatContext())
-
-	var input strings.Builder
-	input.WriteString("Project: ")
-	input.WriteString(title)
-	input.WriteString("\n\n")
-	input.WriteString(experience)
-	input.WriteString("\n\nWriting style:\nLanguage: ")
-	input.WriteString(style.Language)
-	input.WriteString("\nPerspective: ")
-	input.WriteString(style.Perspective)
-	input.WriteString("\nTense: ")
-	input.WriteString(style.Tense)
-	input.WriteString("\nTone: ")
-	input.WriteString(style.Tone)
-	input.WriteString("\nSentence length: ")
-	input.WriteString(style.SentenceLength)
-	if style.UsesReferences {
-		input.WriteString("\nUses references: yes")
-	} else {
-		input.WriteString("\nUses references: no")
+func WriteEvidence(client aiClient, skill *Skill, title, review string, style *StyleResult, coverage *CoverageResult, summary *EvidenceResult) (string, error) {
+	type writeEvidenceTemplateData struct {
+		Category   string
+		Competence string
+		Title      string
+		Style      *StyleResult
+		Coverage   *CoverageResult
+		Summary    *EvidenceResult
 	}
-	input.WriteString("\n\nCoverage:\n")
-	for _, item := range coverage.Coverage {
-		input.WriteString(item.ID)
-		input.WriteString(": ")
-		input.WriteString(item.Status)
-		input.WriteString(" — ")
-		input.WriteString(item.Reason)
-		input.WriteString("\n")
+
+	data := writeEvidenceTemplateData{
+		Category:   skill.Category,
+		Competence: skill.Competence,
+		Title:      title,
+		Style:      style,
+		Coverage:   coverage,
+		Summary:    summary,
+	}
+
+	instructions, err := renderTemplate(writeEvidencePrompt, data)
+	if err != nil {
+		return "", err
 	}
 
 	params := responses.ResponseNewParams{
-		Instructions: openai.String(instructions.String()),
-		Input:        inputItems(textMsg(input.String())),
+		Instructions: openai.String(instructions),
+		Input:        inputItems(textMsg(review)),
 		Text:         jsonSchemaFormat("write_result", writeResultSchema),
 	}
 
