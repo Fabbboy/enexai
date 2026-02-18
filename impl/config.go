@@ -4,9 +4,9 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-type AiConfig struct {
-	Url         string  `ini:"api_url"`
-	Key         string  `ini:"api_key"`
+type ApiConfig struct {
+	Url         string  `ini:"url"`
+	Key         string  `ini:"key"`
 	Temperature float64 `ini:"temperature"`
 }
 
@@ -16,7 +16,7 @@ type ModelConfig struct {
 }
 
 type Config struct {
-	AiConfig     AiConfig    `ini:"ai"`
+	ApiConfig    ApiConfig   `ini:"ai"`
 	ModelsConfig ModelConfig `ini:"models"`
 }
 

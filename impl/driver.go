@@ -47,10 +47,10 @@ func Run(configPath, skillsPath string, debug bool) error {
 	}
 
 	client := openai.NewClient(
-		option.WithBaseURL(config.AiConfig.Url),
-		option.WithAPIKey(config.AiConfig.Key),
+		option.WithBaseURL(config.ApiConfig.Url),
+		option.WithAPIKey(config.ApiConfig.Key),
 	)
-	logger.Info("OpenAI client initialized with URL", "url", config.AiConfig.Url)
+	logger.Info("OpenAI client initialized with URL", "url", config.ApiConfig.Url)
 
 	classifierClient := aiClient{
 		ctx:    ctx,
