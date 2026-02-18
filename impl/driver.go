@@ -18,6 +18,9 @@ func loadData(logger *slog.Logger, configPath, skillsPath string) (*Config, []Sk
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := config.Validate(); err != nil {
+		return nil, nil, err
+	}
 	logger.Info("Config loaded")
 
 	logger.Info("Loading skills from", "path", skillsPath)

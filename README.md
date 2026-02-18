@@ -43,9 +43,9 @@ We tested several models and recommend:
 Configure models in `config.ini`:
 
 ```ini
-[ai]
-api_url = https://your-ollama-host/v1
-api_key = sk-anything
+[api]
+url = https://your-ollama-host/v1
+key = sk-anything
 
 [models]
 classifier = granite3.3:8b
