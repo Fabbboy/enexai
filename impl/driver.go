@@ -112,15 +112,15 @@ func Run(configPath, skillsPath string, debug bool) error {
 		logger: logger,
 	}
 
+	logger.Info("Analyzing style across all skills")
+	style, err := AnalyzeStyle(classifierClient, skills)
+	if err != nil {
+		return err
+	}
+
 	for _, m := range selected {
 		skill := &skills[m.Index]
 		fmt.Printf("\n--- %s ---\n", skill.Competence)
-
-		logger.Info("Analyzing style", "competence", skill.Competence)
-		style, err := AnalyzeStyle(classifierClient, skill)
-		if err != nil {
-			return err
-		}
 
 		logger.Info("Analyzing evidence", "competence", skill.Competence)
 		summary, err := AnalyzeEvidence(classifierClient, skill)

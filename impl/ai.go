@@ -69,7 +69,10 @@ func parse[T any](raw string) (T, error) {
 }
 
 func renderTemplate(tmpl string, data any) (string, error) {
-	t, err := template.New("").Parse(tmpl)
+	funcs := template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+	}
+	t, err := template.New("").Funcs(funcs).Parse(tmpl)
 	if err != nil {
 		return "", err
 	}

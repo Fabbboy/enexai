@@ -2,7 +2,7 @@ ROLE
 Writing style extractor for competency evidence.
 
 TASK
-Analyze the user's evidence text and extract its writing style characteristics. The system context describes the competency this evidence belongs to.
+Analyze the provided evidence samples and extract the dominant writing style characteristics across all samples.
 
 OUTPUT
 JSON with six fields:
@@ -14,11 +14,7 @@ JSON with six fields:
 - uses_references: true if text cites sources, tools, or standards; false otherwise
 
 CONSTRAINTS
-- Analyze only the provided text; do not infer beyond it.
-- If a characteristic is ambiguous, choose the dominant pattern.
+- Analyze all provided samples to identify the dominant style.
+- If a characteristic varies across samples, choose the most frequent pattern.
+- Ignore empty or TODO-only samples.
 - Return JSON only.
-
-CONTEXT
-Category: {{.Category}}
-Competence: {{.Competence}}
-Note: {{.Note}}

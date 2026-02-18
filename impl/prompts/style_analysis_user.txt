@@ -1,0 +1,5 @@
+SAMPLES
+{{- range $i, $sample := .Samples}}
+=== Sample {{add $i 1}} ===
+{{$sample}}
+{{end}}

@@ -15,6 +15,9 @@ var fitsSkillPrompt string
 //go:embed prompts/style_analysis.txt
 var styleAnalysisPrompt string
 
+//go:embed prompts/style_analysis_user.txt
+var styleAnalysisUserPrompt string
+
 //go:embed prompts/evidence_analysis.txt
 var evidenceAnalysisPrompt string
 
@@ -175,16 +178,30 @@ var styleResultSchema = map[string]any{
 	"additionalProperties": false,
 }
 
-func AnalyzeStyle(client aiClient, skill *Skill) (*StyleResult, error) {
-	instructions, err := renderTemplate(styleAnalysisPrompt, skill)
+func AnalyzeStyle(client aiClient, skills []Skill) (*StyleResult, error) {
+	type styleTemplateData struct {
+		Samples []string
+	}
+
+	var samples []string
+	for i := range skills {
+		text := skills[i].evidenceText()
+		if text != "" {
+			samples = append(samples, text)
+		}
+	}
+
+	data := styleTemplateData{Samples: samples}
+
+	userMsg, err := renderTemplate(styleAnalysisUserPrompt, data)
 	if err != nil {
 		return nil, err
 	}
 
 	params := openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(instructions),
-			openai.UserMessage(skill.evidenceText()),
+			openai.SystemMessage(styleAnalysisPrompt),
+			openai.UserMessage(userMsg),
 		},
 		ResponseFormat: jsonSchemaFormat("style_result", styleResultSchema),
 	}
