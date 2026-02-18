@@ -60,7 +60,7 @@ func Run(configPath, skillsPath string, debug bool) error {
 	classifierClient := aiClient{
 		ctx:    ctx,
 		client: &client,
-		model:  openai.ResponsesModel(config.ModelsConfig.Classifier),
+		model:  openai.ChatModel(config.ModelsConfig.Classifier),
 		logger: logger,
 	}
 
@@ -108,7 +108,7 @@ func Run(configPath, skillsPath string, debug bool) error {
 	writerClient := aiClient{
 		ctx:    ctx,
 		client: &client,
-		model:  openai.ResponsesModel(config.ModelsConfig.Writer),
+		model:  openai.ChatModel(config.ModelsConfig.Writer),
 		logger: logger,
 	}
 

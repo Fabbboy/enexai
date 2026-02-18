@@ -9,21 +9,20 @@ import (
 	"time"
 
 	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/responses"
 )
 
 type aiClient struct {
 	ctx    context.Context
 	client *openai.Client
-	model  openai.ResponsesModel
+	model  openai.ChatModel
 	logger *slog.Logger
 }
 
-func (c aiClient) Send(params responses.ResponseNewParams) (string, error) {
+func (c aiClient) Send(params openai.ChatCompletionNewParams) (string, error) {
 	params.Model = c.model
 
 	start := time.Now()
-	resp, err := c.client.Responses.New(
+	resp, err := c.client.Chat.Completions.New(
 		c.ctx,
 		params,
 	)
@@ -36,24 +35,26 @@ func (c aiClient) Send(params responses.ResponseNewParams) (string, error) {
 
 	duration := elapsed.Seconds()
 	c.logger.Info("OpenAI response",
-		"input_tokens", resp.Usage.InputTokens,
-		"output_tokens", resp.Usage.OutputTokens,
+		"input_tokens", resp.Usage.PromptTokens,
+		"output_tokens", resp.Usage.CompletionTokens,
 		"duration_s", duration,
 	)
-	return resp.OutputText(), nil
+
+	if len(resp.Choices) == 0 {
+		return "", nil
+	}
+	return resp.Choices[0].Message.Content, nil
 }
 
-func textMsg(text string) responses.ResponseInputItemUnionParam {
-	return responses.ResponseInputItemParamOfMessage(text, responses.EasyInputMessageRoleUser)
-}
-
-func inputItems(items ...responses.ResponseInputItemUnionParam) responses.ResponseNewParamsInputUnion {
-	return responses.ResponseNewParamsInputUnion{OfInputItemList: responses.ResponseInputParam(items)}
-}
-
-func jsonSchemaFormat(name string, schema map[string]any) responses.ResponseTextConfigParam {
-	return responses.ResponseTextConfigParam{
-		Format: responses.ResponseFormatTextConfigParamOfJSONSchema(name, schema),
+func jsonSchemaFormat(name string, schema map[string]any) openai.ChatCompletionNewParamsResponseFormatUnion {
+	return openai.ChatCompletionNewParamsResponseFormatUnion{
+		OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+			JSONSchema: openai.ResponseFormatJSONSchemaJSONSchemaParam{
+				Name:   name,
+				Schema: schema,
+				Strict: openai.Bool(true),
+			},
+		},
 	}
 }
 

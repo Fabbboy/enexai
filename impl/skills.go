@@ -7,7 +7,6 @@ import (
 
 	"github.com/gocarina/gocsv"
 	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/responses"
 )
 
 //go:embed prompts/fits_skill.txt
@@ -112,10 +111,12 @@ func FitsSkill(client aiClient, skill *Skill, text string) (*FitsResult, error) 
 		return nil, err
 	}
 
-	params := responses.ResponseNewParams{
-		Instructions: openai.String(instructions),
-		Input:        inputItems(textMsg(text)),
-		Text:         jsonSchemaFormat("fits_result", fitsResultSchema),
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(instructions),
+			openai.UserMessage(text),
+		},
+		ResponseFormat: jsonSchemaFormat("fits_result", fitsResultSchema),
 	}
 
 	resp, err := client.Send(params)
@@ -180,10 +181,12 @@ func AnalyzeStyle(client aiClient, skill *Skill) (*StyleResult, error) {
 		return nil, err
 	}
 
-	params := responses.ResponseNewParams{
-		Instructions: openai.String(instructions),
-		Input:        inputItems(textMsg(skill.evidenceText())),
-		Text:         jsonSchemaFormat("style_result", styleResultSchema),
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(instructions),
+			openai.UserMessage(skill.evidenceText()),
+		},
+		ResponseFormat: jsonSchemaFormat("style_result", styleResultSchema),
 	}
 
 	resp, err := client.Send(params)
@@ -234,10 +237,12 @@ func AnalyzeEvidence(client aiClient, skill *Skill) (*EvidenceResult, error) {
 		return nil, err
 	}
 
-	params := responses.ResponseNewParams{
-		Instructions: openai.String(instructions),
-		Input:        inputItems(textMsg(skill.evidenceText())),
-		Text:         jsonSchemaFormat("evidence_result", evidenceResultSchema),
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(instructions),
+			openai.UserMessage(skill.evidenceText()),
+		},
+		ResponseFormat: jsonSchemaFormat("evidence_result", evidenceResultSchema),
 	}
 
 	resp, err := client.Send(params)
@@ -293,10 +298,12 @@ func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
 		return nil, err
 	}
 
-	params := responses.ResponseNewParams{
-		Instructions: openai.String(instructions),
-		Input:        inputItems(textMsg(skill.evidenceText())),
-		Text:         jsonSchemaFormat("coverage_result", coverageResultSchema),
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(instructions),
+			openai.UserMessage(skill.evidenceText()),
+		},
+		ResponseFormat: jsonSchemaFormat("coverage_result", coverageResultSchema),
 	}
 
 	resp, err := client.Send(params)
@@ -349,10 +356,12 @@ func WriteEvidence(client aiClient, skill *Skill, title, review string, style *S
 		return "", err
 	}
 
-	params := responses.ResponseNewParams{
-		Instructions: openai.String(instructions),
-		Input:        inputItems(textMsg(review)),
-		Text:         jsonSchemaFormat("write_result", writeResultSchema),
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(instructions),
+			openai.UserMessage(review),
+		},
+		ResponseFormat: jsonSchemaFormat("write_result", writeResultSchema),
 	}
 
 	resp, err := client.Send(params)
