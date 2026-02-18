@@ -122,20 +122,20 @@ func Run(configPath, skillsPath string, debug bool) error {
 		skill := &skills[m.Index]
 		fmt.Printf("\n--- %s ---\n", skill.Competence)
 
+		logger.Info("Extracting competencies", "competence", skill.Competence)
+		competencies, err := ExtractCompetencies(classifierClient, skill)
+		if err != nil {
+			return err
+		}
+
 		logger.Info("Analyzing evidence", "competence", skill.Competence)
 		summary, err := AnalyzeEvidence(classifierClient, skill)
 		if err != nil {
 			return err
 		}
 
-		logger.Info("Detecting coverage", "competence", skill.Competence)
-		coverage, err := DetectCoverage(classifierClient, skill)
-		if err != nil {
-			return err
-		}
-
 		logger.Info("Writing evidence", "competence", skill.Competence)
-		evidence, err := WriteEvidence(writerClient, skill, title, text, style, coverage, summary)
+		evidence, err := WriteEvidence(writerClient, skill, title, text, style, summary, competencies)
 		if err != nil {
 			return err
 		}

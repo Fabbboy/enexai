@@ -21,9 +21,6 @@ var styleAnalysisUserPrompt string
 //go:embed prompts/evidence_analysis.txt
 var evidenceAnalysisPrompt string
 
-//go:embed prompts/coverage_detection.txt
-var coverageDetectionPrompt string
-
 //go:embed prompts/write_evidence.txt
 var writeEvidencePrompt string
 
@@ -342,67 +339,6 @@ func AnalyzeEvidence(client aiClient, skill *Skill) (*EvidenceResult, error) {
 	return &result, nil
 }
 
-type CoverageItem struct {
-	ID     string `json:"id"`
-	Status string `json:"status"`
-	Reason string `json:"reason"`
-}
-
-type CoverageResult struct {
-	Coverage []CoverageItem `json:"coverage"`
-}
-
-var coverageResultSchema = map[string]any{
-	"type": "object",
-	"properties": map[string]any{
-		"coverage": map[string]any{
-			"type": "array",
-			"items": map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"id": map[string]any{"type": "string"},
-					"status": map[string]any{
-						"type": "string",
-						"enum": []string{"covered", "partial", "none"},
-					},
-					"reason": map[string]any{"type": "string"},
-				},
-				"required":             []string{"id", "status", "reason"},
-				"additionalProperties": false,
-			},
-		},
-	},
-	"required":             []string{"coverage"},
-	"additionalProperties": false,
-}
-
-func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
-	instructions, err := renderTemplate(coverageDetectionPrompt, skill)
-	if err != nil {
-		return nil, err
-	}
-
-	params := openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(instructions),
-			openai.UserMessage(skill.evidenceText()),
-		},
-		ResponseFormat: jsonSchemaFormat("coverage_result", coverageResultSchema),
-	}
-
-	resp, err := client.Send(params)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := parse[CoverageResult](resp)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
 type WriteResult struct {
 	Evidence string `json:"evidence"`
 }
@@ -416,23 +352,23 @@ var writeResultSchema = map[string]any{
 	"additionalProperties": false,
 }
 
-func WriteEvidence(client aiClient, skill *Skill, title, review string, style *StyleResult, coverage *CoverageResult, summary *EvidenceResult) (string, error) {
+func WriteEvidence(client aiClient, skill *Skill, title, review string, style *StyleResult, summary *EvidenceResult, competencies *CompetenciesResult) (string, error) {
 	type writeEvidenceTemplateData struct {
-		Category   string
-		Competence string
-		Title      string
-		Style      *StyleResult
-		Coverage   *CoverageResult
-		Summary    *EvidenceResult
+		Category     string
+		Competence   string
+		Title        string
+		Style        *StyleResult
+		Summary      *EvidenceResult
+		Competencies []Competency
 	}
 
 	data := writeEvidenceTemplateData{
-		Category:   skill.Category,
-		Competence: skill.Competence,
-		Title:      title,
-		Style:      style,
-		Coverage:   coverage,
-		Summary:    summary,
+		Category:     skill.Category,
+		Competence:   skill.Competence,
+		Title:        title,
+		Style:        style,
+		Summary:      summary,
+		Competencies: competencies.Competencies,
 	}
 
 	instructions, err := renderTemplate(writeEvidencePrompt, data)

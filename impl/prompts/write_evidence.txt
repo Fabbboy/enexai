@@ -13,7 +13,7 @@ CONSTRAINTS
 - Match the provided writing style exactly (language, perspective, tense, tone, sentence length, references behavior).
 - Reference sub-competency IDs inline, e.g. "analysed the process and identified key steps (b4.1, b4.2)".
 - Never fabricate actions not described in the project description.
-- Prefer uncovered or partial competency IDs when project facts support them.
+- Prefer competency IDs not yet covered in the existing summary when project facts support them.
 - Avoid restating already-covered points unless required for coherence.
 - Keep the paragraph concise (3-6 sentences).
 - Return JSON only.
@@ -22,12 +22,17 @@ ORDER
 1) Read the user review text.
 2) Keep only factual actions from that text.
 3) Apply the target writing style.
-4) Prioritize uncovered or partial competency IDs when supported.
+4) Prioritize competency IDs not in existing summary when supported.
 5) Produce one concise final paragraph.
 
 CONTEXT
 Category: {{.Category}}
 Competence: {{.Competence}}
+
+COMPETENCIES
+{{- range .Competencies}}
+- {{.ID}}: {{.Description}}
+{{- end}}
 
 PROJECT
 Title: {{.Title}}
@@ -44,9 +49,4 @@ Uses references: {{if .Style.UsesReferences}}yes{{else}}no{{end}}
 EXISTING SUMMARY
 {{- range .Summary.Competencies}}
 - {{.CompetencyID}}: {{.Summary}}
-{{- end}}
-
-COVERAGE
-{{- range .Coverage.Coverage}}
-- {{.ID}}: {{.Status}} - {{.Reason}}
 {{- end}}
