@@ -22,6 +22,9 @@ var evidenceAnalysisPrompt string
 //go:embed prompts/coverage_detection.txt
 var coverageDetectionPrompt string
 
+//go:embed prompts/write_evidence.txt
+var writeEvidencePrompt string
+
 type Skill struct {
 	Category   string `csv:"Kompetenzkategorie"`
 	Competence string `csv:"Kompetenz"`
@@ -311,4 +314,72 @@ func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
 	}
 
 	return &result, nil
+}
+
+type WriteResult struct {
+	Evidence string `json:"evidence"`
+}
+
+var writeResultSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"evidence": map[string]any{"type": "string"},
+	},
+	"required":             []string{"evidence"},
+	"additionalProperties": false,
+}
+
+func WriteEvidence(client aiClient, skill *Skill, title, experience string, style *StyleResult, coverage *CoverageResult) (string, error) {
+	var instructions strings.Builder
+	instructions.WriteString(writeEvidencePrompt)
+	instructions.WriteString("\n\n")
+	instructions.WriteString(skill.FormatContext())
+
+	var input strings.Builder
+	input.WriteString("Project: ")
+	input.WriteString(title)
+	input.WriteString("\n\n")
+	input.WriteString(experience)
+	input.WriteString("\n\nWriting style:\nLanguage: ")
+	input.WriteString(style.Language)
+	input.WriteString("\nPerspective: ")
+	input.WriteString(style.Perspective)
+	input.WriteString("\nTense: ")
+	input.WriteString(style.Tense)
+	input.WriteString("\nTone: ")
+	input.WriteString(style.Tone)
+	input.WriteString("\nSentence length: ")
+	input.WriteString(style.SentenceLength)
+	if style.UsesReferences {
+		input.WriteString("\nUses references: yes")
+	} else {
+		input.WriteString("\nUses references: no")
+	}
+	input.WriteString("\n\nCoverage:\n")
+	for _, item := range coverage.Coverage {
+		input.WriteString(item.ID)
+		input.WriteString(": ")
+		input.WriteString(item.Status)
+		input.WriteString(" — ")
+		input.WriteString(item.Reason)
+		input.WriteString("\n")
+	}
+
+	params := responses.ResponseNewParams{
+		Instructions: openai.String(instructions.String()),
+		Input:        inputItems(textMsg(input.String())),
+		Text:         jsonSchemaFormat("write_result", writeResultSchema),
+	}
+
+	resp, err := client.Send(params)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := parse[WriteResult](resp)
+	if err != nil {
+		return "", err
+	}
+
+	return result.Evidence, nil
 }

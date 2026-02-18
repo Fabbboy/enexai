@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/lmittmann/tint"
 	"github.com/openai/openai-go/v3"
@@ -80,9 +82,59 @@ func Run(configPath, skillsPath string, debug bool) error {
 		return err
 	}
 
+	if len(matches) == 0 {
+		fmt.Println("\nNo skills matched.")
+		return nil
+	}
+
 	fmt.Printf("\n%d skill(s) matched:\n", len(matches))
-	for _, m := range matches {
-		fmt.Printf("  - [%s] %s\n", m.Fitness, skills[m.Index].Competence)
+	for i, m := range matches {
+		fmt.Printf("  %d) [%s] %s\n", i+1, m.Fitness, skills[m.Index].Competence)
+	}
+
+	fmt.Print("\nSelect skills (comma-separated numbers, e.g. 1,3): ")
+	scanner.Scan()
+	input := scanner.Text()
+
+	var selected []SkillMatch
+	for _, part := range strings.Split(input, ",") {
+		n, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || n < 1 || n > len(matches) {
+			return fmt.Errorf("invalid selection: %s", part)
+		}
+		selected = append(selected, matches[n-1])
+	}
+
+	writerClient := aiClient{
+		ctx:    ctx,
+		client: &client,
+		model:  openai.ResponsesModel(config.ModelsConfig.Writer),
+		logger: logger,
+	}
+
+	for _, m := range selected {
+		skill := &skills[m.Index]
+		fmt.Printf("\n--- %s ---\n", skill.Competence)
+
+		logger.Info("Analyzing style", "competence", skill.Competence)
+		style, err := AnalyzeStyle(classifierClient, skill)
+		if err != nil {
+			return err
+		}
+
+		logger.Info("Detecting coverage", "competence", skill.Competence)
+		coverage, err := DetectCoverage(classifierClient, skill)
+		if err != nil {
+			return err
+		}
+
+		logger.Info("Writing evidence", "competence", skill.Competence)
+		evidence, err := WriteEvidence(writerClient, skill, title, text, style, coverage)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("\n%s\n", evidence)
 	}
 
 	return nil
