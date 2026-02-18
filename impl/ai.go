@@ -41,12 +41,8 @@ func (c aiClient) Send(params responses.ResponseNewParams) (string, error) {
 	return resp.OutputText(), nil
 }
 
-func userMsg(text string) responses.ResponseInputItemUnionParam {
+func textMsg(text string) responses.ResponseInputItemUnionParam {
 	return responses.ResponseInputItemParamOfMessage(text, responses.EasyInputMessageRoleUser)
-}
-
-func systemMsg(text string) responses.ResponseInputItemUnionParam {
-	return responses.ResponseInputItemParamOfMessage(text, responses.EasyInputMessageRoleSystem)
 }
 
 func inputItems(items ...responses.ResponseInputItemUnionParam) responses.ResponseNewParamsInputUnion {

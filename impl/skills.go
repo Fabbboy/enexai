@@ -112,7 +112,7 @@ func FitsSkill(client aiClient, skill *Skill, text string) (*FitsResult, error) 
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
-		Input:        inputItems(userMsg(text)),
+		Input:        inputItems(textMsg(text)),
 		Text:         jsonSchemaFormat("fits_result", fitsResultSchema),
 	}
 
@@ -181,7 +181,7 @@ func AnalyzeStyle(client aiClient, skill *Skill) (*StyleResult, error) {
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
-		Input:        inputItems(userMsg(skill.evidenceText())),
+		Input:        inputItems(textMsg(skill.evidenceText())),
 		Text:         jsonSchemaFormat("style_result", styleResultSchema),
 	}
 
@@ -236,7 +236,7 @@ func AnalyzeEvidence(client aiClient, skill *Skill) (*EvidenceResult, error) {
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
-		Input:        inputItems(userMsg(skill.evidenceText())),
+		Input:        inputItems(textMsg(skill.evidenceText())),
 		Text:         jsonSchemaFormat("evidence_result", evidenceResultSchema),
 	}
 
@@ -296,7 +296,7 @@ func DetectCoverage(client aiClient, skill *Skill) (*CoverageResult, error) {
 
 	params := responses.ResponseNewParams{
 		Instructions: openai.String(instructions),
-		Input:        inputItems(userMsg(skill.evidenceText())),
+		Input:        inputItems(textMsg(skill.evidenceText())),
 		Text:         jsonSchemaFormat("coverage_result", coverageResultSchema),
 	}
 
