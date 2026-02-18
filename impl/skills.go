@@ -27,6 +27,17 @@ var coverageDetectionPrompt string
 //go:embed prompts/write_evidence.txt
 var writeEvidencePrompt string
 
+//go:embed prompts/extract_competencies.txt
+var extractCompetenciesPrompt string
+
+//go:embed prompts/extract_competencies_user.txt
+var extractCompetenciesUserPrompt string
+
+type Competency struct {
+	ID          string `json:"id"`
+	Description string `json:"description"`
+}
+
 type Skill struct {
 	Category   string `csv:"Kompetenzkategorie"`
 	Competence string `csv:"Kompetenz"`
@@ -153,6 +164,62 @@ func FindFittingSkills(client aiClient, skills []Skill, text string) ([]SkillMat
 		}
 	}
 	return matches, nil
+}
+
+type CompetenciesResult struct {
+	Competencies []Competency `json:"competencies"`
+}
+
+var competenciesResultSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"competencies": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"id":          map[string]any{"type": "string"},
+					"description": map[string]any{"type": "string"},
+				},
+				"required":             []string{"id", "description"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"competencies"},
+	"additionalProperties": false,
+}
+
+func ExtractCompetencies(client aiClient, skill *Skill) (*CompetenciesResult, error) {
+	instructions, err := renderTemplate(extractCompetenciesPrompt, skill)
+	if err != nil {
+		return nil, err
+	}
+
+	userMsg, err := renderTemplate(extractCompetenciesUserPrompt, skill)
+	if err != nil {
+		return nil, err
+	}
+
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(instructions),
+			openai.UserMessage(userMsg),
+		},
+		ResponseFormat: jsonSchemaFormat("competencies_result", competenciesResultSchema),
+	}
+
+	resp, err := client.Send(params)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := parse[CompetenciesResult](resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 type StyleResult struct {

@@ -1,0 +1,22 @@
+ROLE
+Sub-competency extractor for apprenticeship portfolios.
+
+TASK
+Extract all sub-competency definitions from the provided skill text. Sub-competencies appear as numbered identifiers (e.g. "a1.1", "b4.2") followed by their description text.
+
+OUTPUT
+JSON with one field:
+- competencies: array of objects, each with:
+  - id: the competency identifier (e.g. "a1.1", "b4.2")
+  - description: the competency description text
+
+CONSTRAINTS
+- Extract ONLY the sub-competency definitions, not evidence or project descriptions.
+- Preserve the exact ID format found in the text.
+- Include the full description text for each competency.
+- If no sub-competencies are found, return an empty array.
+- Return JSON only.
+
+CONTEXT
+Category: {{.Category}}
+Competence: {{.Competence}}
